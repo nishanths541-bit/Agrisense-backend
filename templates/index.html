@@ -878,7 +878,7 @@ formData.append('image', lastUploadedFile);
 formData.append('latitude', userLatitude);
 formData.append('longitude', userLongitude);
 
-fetch('http://127.0.0.1:5000/predict', {
+fetch("https://agrisense-backend-5xmr.onrender.com/predict", {
   method: 'POST',
   body: formData
 })
@@ -960,7 +960,7 @@ fetch('http://127.0.0.1:5000/predict', {
   })
   .catch(err => {
     addLog('Backend connection failed — is Flask server running?', 'warn');
-    alert('Could not connect to AI backend. Make sure your Flask server (app.py) is running on http://127.0.0.1:5000');
+    alert('Could not connect to AI backend. Make sure your Flask server (app.py) is running on https://agrisense-backend-5xmr.onrender.com);
     btn.disabled = false;
     document.getElementById('btnSpinner').style.display = 'none';
     document.getElementById('btnText').textContent = 'Analyze Disease';
