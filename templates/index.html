@@ -490,7 +490,7 @@ const hotspotLayer = L.layerGroup().addTo(diseaseMap);
 // LOAD PREDICTION HISTORY
 // ===============================
 
-fetch('http://127.0.0.1:5000/prediction-history')
+fetch('https://agrisense-backend-5xmr.onrender.com/prediction-history')
   .then(response => response.json())
   .then(history => {
 
@@ -878,9 +878,11 @@ formData.append('image', lastUploadedFile);
 formData.append('latitude', userLatitude);
 formData.append('longitude', userLongitude);
 
-fetch("https://agrisense-backend-5xmr.onrender.com/predict", {
-  method: 'POST',
-  body: formData
+const API_URL = "https://agrisense-backend-5xmr.onrender.com";
+
+fetch(`${API_URL}/predict`, {
+    method: "POST",
+    body: formData
 })
   .then(r => r.json())
   .then(result => {
@@ -960,7 +962,7 @@ fetch("https://agrisense-backend-5xmr.onrender.com/predict", {
   })
   .catch(err => {
     addLog('Backend connection failed — is Flask server running?', 'warn');
-    alert('Could not connect to AI backend. Make sure your Flask server (app.py) is running on https://agrisense-backend-5xmr.onrender.com);
+    alert('Could not connect to AI backend. Make sure your Flask server (app.py) is running on https://agrisense-backend-5xmr.onrender.com');
     btn.disabled = false;
     document.getElementById('btnSpinner').style.display = 'none';
     document.getElementById('btnText').textContent = 'Analyze Disease';
