@@ -10,7 +10,7 @@ from datetime import datetime
 app = Flask(__name__)
 import os
 
-MODEL_PATH = os.path.join("models", "plant_disease_model.h5")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plant_disease_model.h5")
 CLASS_NAMES = [
     "Apple___Apple_scab", "Apple___healthy",
     "Corn_(maize)___Common_rust_", "Corn_(maize)___healthy",
