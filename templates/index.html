@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriSense — Smart Agriculture Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root {
+    --bg-primary:#0a0f0a;--bg-card:#111811;--bg-card2:#0d140d;
+    --border:#1e2e1e;--border-light:#243824;
+    --green-primary:#22c55e;--green-dim:#16a34a;
+    --green-glow:rgba(34,197,94,0.12);--green-subtle:rgba(34,197,94,0.06);
+    --amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+    --text-primary:#e8f5e8;--text-secondary:#7aa87a;--text-muted:#4a6b4a;
+    --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;}
+  .header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--bg-card2);}
+  .logo-text{font-size:22px;font-weight:700;letter-spacing:2px;color:var(--green-primary);}
+  .logo-sub{font-size:11px;color:var(--text-muted);letter-spacing:1px;margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:20px;}
+  .live-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);font-family:var(--mono);}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green-primary);box-shadow:0 0 8px var(--green-primary);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--text-secondary);}
+  .main{padding:20px 28px;display:grid;gap:16px;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:18px;}
+  .card-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .card-title{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-secondary);}
+  .badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;letter-spacing:0.5px;font-family:var(--mono);}
+  .badge-green{background:rgba(34,197,94,0.15);color:var(--green-primary);border:1px solid rgba(34,197,94,0.3);}
+  .badge-red{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);}
+  .badge-amber{background:rgba(245,158,11,0.15);color:var(--amber);border:1px solid rgba(245,158,11,0.3);}
+  .badge-blue{background:rgba(59,130,246,0.15);color:var(--blue);border:1px solid rgba(59,130,246,0.3);}
+  .upload-zone{border:1.5px dashed var(--border-light);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--green-subtle);position:relative;overflow:hidden;}
+  .upload-zone:hover{border-color:var(--green-dim);background:var(--green-glow);}
+  .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+  .upload-preview{width:100%;height:180px;object-fit:cover;border-radius:6px;display:none;margin-bottom:10px;}
+  .upload-icon{font-size:28px;margin-bottom:8px;}
+  .upload-text{font-size:13px;color:var(--text-secondary);}
+  .upload-hint{font-size:11px;color:var(--text-muted);margin-top:4px;}
+  .section-divider{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;margin-top:4px;}
+  .symptom-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .symptom-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);cursor:pointer;transition:all 0.2s;font-size:12px;color:var(--text-secondary);}
+  .symptom-item:hover{border-color:var(--green-dim);color:var(--text-primary);}
+  .symptom-item.selected{border-color:var(--green-primary);background:var(--green-glow);color:var(--green-primary);}
+  .symptom-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border-light);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+  .symptom-item.selected .symptom-check{background:var(--green-primary);border-color:var(--green-primary);color:#000;}
+
+  /* Weather Card */
+  .weather-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+  .weather-item{text-align:center;padding:10px 6px;background:#080d08;border-radius:8px;border:1px solid var(--border);}
+  .weather-value{font-size:26px;font-weight:700;font-family:var(--mono);line-height:1;}
+  .weather-label{font-size:10px;color:var(--text-muted);margin-top:4px;letter-spacing:0.5px;}
+  .weather-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;}
+  .weather-fill{height:100%;border-radius:2px;transition:width 1s;}
+  .location-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+  .location-dot{width:6px;height:6px;border-radius:50%;background:var(--green-primary);}
+
+  /* Soil Input */
+  .soil-select{width:100%;padding:8px 12px;background:#080d08;border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-family:var(--font);font-size:13px;cursor:pointer;outline:none;}
+  .soil-select:focus{border-color:var(--green-dim);}
+  .soil-select option{background:#0a0f0a;}
+  .weather-status{font-size:11px;color:var(--text-muted);text-align:center;padding:6px;}
+
+  .analyze-btn{width:100%;padding:12px;background:var(--green-primary);color:#000;font-weight:700;font-size:14px;border:none;border-radius:8px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:var(--font);}
+  .analyze-btn:hover{background:#16a34a;transform:translateY(-1px);}
+  .analyze-btn:disabled{background:var(--border);color:var(--text-muted);cursor:not-allowed;transform:none;}
+  .disease-name{font-size:24px;font-weight:700;color:var(--text-primary);line-height:1.2;}
+  .confidence-bar-wrap{margin:12px 0 6px;}
+  .confidence-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:5px;}
+  .confidence-bar{height:6px;background:var(--border);border-radius:3px;}
+  .confidence-fill{height:100%;border-radius:3px;background:var(--green-primary);box-shadow:0 0 8px rgba(34,197,94,0.5);transition:width 1s;}
+  .severity-meter{display:flex;gap:4px;margin:10px 0;}
+  .severity-block{flex:1;height:8px;border-radius:2px;background:var(--border);}
+  .severity-block.low{background:var(--green-primary);}
+  .severity-block.medium{background:var(--amber);}
+  .severity-block.high{background:var(--red);}
+  .treatment-tabs{display:flex;gap:6px;margin-bottom:12px;}
+  .tab{padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text-muted);transition:all 0.2s;font-family:var(--font);background:transparent;}
+  .tab.active{border-color:var(--green-primary);color:var(--green-primary);background:var(--green-glow);}
+  .treatment-panel{display:none;}
+  .treatment-panel.active{display:block;}
+  .treatment-name{font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;}
+  .treatment-desc{font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6;}
+  .treatment-detail{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;}
+  .treatment-detail:last-child{border-bottom:none;}
+  .detail-label{color:var(--text-muted);}
+  .detail-value{color:var(--text-primary);font-weight:500;font-family:var(--mono);}
+  .decision-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .decision-row:last-child{border-bottom:none;}
+  .decision-key{color:var(--text-muted);}
+  .decision-val{font-weight:500;}
+  .log-box{background:#080d08;border-radius:6px;padding:12px;font-family:var(--mono);font-size:11px;height:130px;overflow-y:auto;border:1px solid var(--border);}
+  .log-line{padding:2px 0;}
+  .log-time{color:var(--text-muted);margin-right:8px;}
+  .log-info{color:var(--green-primary);}
+  .log-warn{color:var(--amber);}
+  .log-detect{color:#60a5fa;}
+  .placeholder-state{text-align:center;padding:30px 20px;color:var(--text-muted);font-size:13px;}
+  .placeholder-icon{font-size:32px;margin-bottom:8px;opacity:0.4;}
+  .btn-outline{display:inline-flex;align-items:center;gap:6px;width:100%;justify-content:center;margin-top:12px;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--green-primary);border:1px solid var(--green-primary);transition:all 0.2s;font-family:var(--font);}
+  .btn-outline:hover{background:var(--green-glow);}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:var(--bg-primary);}
+  ::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px;}
+  .loading-spinner{display:none;width:18px;height:18px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .weather-loading{text-align:center;padding:20px;color:var(--text-muted);font-size:12px;}
+/* ===============================
+   AGRISENSE MAP CONTROL
+   =============================== */
+
+.leaflet-control-layers {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.18) !important;
+  padding: 10px !important;
+  font-family: Arial, sans-serif;
+}
+
+.leaflet-control-layers-list {
+  margin: 4px;
+}
+
+.leaflet-control-layers-base label,
+.leaflet-control-layers-overlays label {
+  padding: 5px 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.leaflet-control-layers-base label:hover,
+.leaflet-control-layers-overlays label:hover {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.leaflet-control-layers-separator {
+  border-top: 1px solid #ddd;
+  margin: 8px 0;
+}
+#referralSection button {
+    color: white !important;
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <span class="logo-text">AGRI<span style="color:#7aa87a">SENSE</span></span>
+    <div class="logo-sub">AI-Powered Precision Agriculture Monitoring System</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>Farm Node A3 &nbsp;·&nbsp; Live</div>
+    <div class="clock" id="clock">--:--:--</div>
+    <!-- Language Selector -->
+<select id="languageSelector" onchange="changeLanguage()">
+    <option value="en">English</option>
+    <option value="ta">தமிழ்</option>
+    <option value="hi">हिन्दी</option>
+    <option value="te">తెలుగు</option>
+    <option value="ml">മലയാളം</option>
+    <option value="kn">ಕನ್ನಡ</option>
+    <option value="mr">मराठी</option>
+</select>
+  </div>
+</div>
+
+<div class="main">
+  <div class="grid-3">
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="badge badge-green">CAM-01</span>
+        <span class="card-title">Live Farm View</span>
+      </div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
+        <img id="uploadPreview" class="upload-preview" alt="Uploaded leaf">
+        <div id="uploadPlaceholder">
+          <div class="upload-icon">🌿</div>
+          <div class="upload-text">Upload leaf image</div>
+          <div class="upload-hint">PNG / JPG / WEBP · Click to upload</div>
+        </div>
+      </div>
+      <p class="section-divider" style="margin-top:14px;">Symptom checklist</p>
+      <div class="symptom-grid">
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Yellow spots</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Brown patches</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Wilting leaves</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>White powder</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Dark lesions</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Leaf curl</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Holes in leaf</div>
+        <div class="symptom-item" onclick="toggleSymptom(this)"><div class="symptom-check">✓</div>Water soaked</div>
+      </div>
+      <button class="analyze-btn" id="analyzeBtn" onclick="analyzeDisease()" disabled>
+        <span id="btnText">Upload image to analyze</span>
+        <div class="loading-spinner" id="btnSpinner"></div>
+      </button>
+    </div>
+
+    <!-- Weather + Log -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- Weather Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Environmental Data</span>
+          <span class="badge badge-blue" id="weatherBadge">Fetching...</span>
+        </div>
+        <div id="weatherLoading" class="weather-loading">📍 Detecting your location...</div>
+        <div id="weatherData" style="display:none;">
+          <div class="location-row">
+            <div class="location-dot"></div>
+            <span id="locationName">—</span>
+            <span style="margin-left:auto;font-size:11px;" id="weatherDesc">—</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);">
+  GPS: <span id="latitudeVal">—</span>° N &nbsp;|&nbsp;
+  <span id="longitudeVal">—</span>° E
+</div>
+          <div class="weather-grid">
+            <div class="weather-item">
+              <div class="weather-value" style="color:#f59e0b;" id="tempVal">—</div>
+              <div class="weather-label">Temp °C</div>
+              <div class="weather-bar"><div class="weather-fill" id="tempBar" style="background:#f59e0b;width:0%"></div></div>
+            </div>
+            <div class="weather-item">
+              <div class="weather-value" style="color:#3b82f6;" id="humidVal">—</div>
+              <div class="weather-label">Humidity %</div>
+              <div class="weather-bar"><div class="weather-fill" id="humidBar" style="background:#3b82f6;width:0%"></div></div>
+            </div>
+            <div class="weather-item">
+              <div class="weather-value" style="color:#a78bfa;" id="windVal">—</div>
+              <div class="weather-label">Wind km/h</div>
+              <div class="weather-bar"><div class="weather-fill" id="windBar" style="background:#a78bfa;width:0%"></div></div>
+            </div>
+          </div>
+          <p class="section-divider">Soil condition (farmer input)</p>
+          <select class="soil-select" id="soilSelect">
+            <option value="">— Select soil condition —</option>
+            <option value="Dry">Dry — Low moisture, needs irrigation</option>
+            <option value="Moist">Moist — Optimal moisture level</option>
+            <option value="Wet">Wet — High moisture, risk of fungal</option>
+            <option value="Waterlogged">Waterlogged — Excess water present</option>
+          </select>
+        </div>
+        <div id="weatherError"
+     style="display:none;text-align:center;padding:10px;font-size:12px;color:var(--red);">
+    Could not fetch live weather data.
+</div>
+      </div>
+
+      <!-- System Log -->
+      <div class="card" style="flex:1;">
+        <div class="card-header"><span class="card-title">System Log</span></div>
+        <div class="log-box" id="logBox">
+          <div class="log-line"><span class="log-time" id="lt1">--:--:--</span><span class="log-info">AgriSense system initialized</span></div>
+          <div class="log-line"><span class="log-time" id="lt2">--:--:--</span><span class="log-info">MobileNetV2 model ready</span></div>
+          <div class="log-line"><span class="log-time" id="lt3">--:--:--</span><span class="log-info">Requesting location access...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disease Detection -->
+    <div class="card">
+      <div class="card-header">
+        <span class="badge badge-blue">AI</span>
+        <span class="card-title">Disease Detection</span>
+        <span class="badge badge-red" id="severityBadge" style="margin-left:auto;display:none;">High</span>
+      </div>
+      <div id="detectionPlaceholder" class="placeholder-state">
+        <div class="placeholder-icon">🔍</div>
+        Upload a leaf image and click Analyze
+      </div>
+      <div id="detectionResult" style="display:none;">
+        <div class="disease-name" id="diseaseName">—</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="diseaseCategory"></div>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-label"><span>Confidence score</span><span id="confidenceText">0%</span></div>
+          <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill" style="width:0%"></div></div>
+        </div>
+        <p class="section-divider">Severity assessment</p>
+        <div class="severity-meter" id="severityMeter">
+          <div class="severity-block"></div><div class="severity-block"></div>
+          <div class="severity-block"></div><div class="severity-block"></div>
+          <div class="severity-block"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);" id="severityText">—</div>
+        <div style="margin-top:12px;padding:10px;background:#080d08;border-radius:6px;border:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Cause</div>
+          <div style="font-size:12px;color:var(--text-secondary);" id="diseaseCause">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid-2">
+
+    <!-- Treatment -->
+    <div class="card">
+      <div class="card-header">
+        <span class="badge badge-green">AI</span>
+        <span class="card-title">Pesticide Recommendation</span>
+      </div>
+      <div id="treatmentPlaceholder" class="placeholder-state">
+        <div class="placeholder-icon">💊</div>
+        Treatment options appear after analysis
+      </div>
+      <div id="treatmentResult" style="display:none;">
+        <div class="treatment-tabs">
+          <button class="tab active" onclick="switchTab(this,'chemical')">Chemical</button>
+          <button class="tab" onclick="switchTab(this,'alternative')">Alternative</button>
+          <button class="tab" onclick="switchTab(this,'organic')">Organic</button>
+        </div>
+        <div class="treatment-panel active" id="panel-chemical">
+          <div class="treatment-name" id="chem-name">—</div>
+          <div class="treatment-desc" id="chem-desc">—</div>
+          <div class="treatment-detail"><span class="detail-label">Dosage</span><span class="detail-value" id="chem-dosage">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Frequency</span><span class="detail-value" id="chem-freq">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Application</span><span class="detail-value" id="chem-apply">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Est. Cost</span><span class="detail-value" id="chem-cost">—</span></div>
+        </div>
+        <div class="treatment-panel" id="panel-alternative">
+          <div class="treatment-name" id="alt-name">—</div>
+          <div class="treatment-desc" id="alt-desc">—</div>
+          <div class="treatment-detail"><span class="detail-label">Dosage</span><span class="detail-value" id="alt-dosage">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Frequency</span><span class="detail-value" id="alt-freq">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Application</span><span class="detail-value" id="alt-apply">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Est. Cost</span><span class="detail-value" id="alt-cost">—</span></div>
+        </div>
+        <div class="treatment-panel" id="panel-organic">
+          <div class="treatment-name" id="org-name">—</div>
+          <div class="treatment-desc" id="org-desc">—</div>
+          <div class="treatment-detail"><span class="detail-label">Dosage</span><span class="detail-value" id="org-dosage">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Frequency</span><span class="detail-value" id="org-freq">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Application</span><span class="detail-value" id="org-apply">—</span></div>
+          <div class="treatment-detail"><span class="detail-label">Est. Cost</span><span class="detail-value" id="org-cost">—</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- LABORATORY / EXTENSION REFERRAL - START -->
+<div id="referralSection" style="display:none; margin-top:20px;">
+
+    <div style="
+        border:1px solid #ddd;
+        border-radius:12px;
+        padding:18px;
+        background:inherit;
+    ">
+
+        <h3 style="margin-top:0;">
+            🧪 Laboratory / Extension Referral
+        </h3>
+
+        <p id="referralMessage" style="margin-bottom:15px;">
+            Further confirmation is recommended.
+        </p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+
+            <button
+                type="button"
+                onclick="showExtensionReferral()"
+                style="
+                    padding:10px 15px;
+                    border:1px solid #ccc;
+                    border-radius:8px;
+                    cursor:pointer;
+                    background:inherit;
+                ">
+                📞 Agriculture Extension
+            </button>
+
+            <button
+                type="button"
+                onclick="showLabReferral()"
+                style="
+                    padding:10px 15px;
+                    border:1px solid #ccc;
+                    border-radius:8px;
+                    cursor:pointer;
+                    background:inherit;
+                ">
+                🧪 Laboratory Referral
+            </button>
+
+            <button
+                type="button"
+                onclick="downloadDiseaseReport()"
+                style="
+                    padding:10px 15px;
+                    border:1px solid #ccc;
+                    border-radius:8px;
+                    cursor:pointer;
+                    background:inherit;
+                ">
+                📄 Download Disease Report
+            </button>
+
+        </div>
+
+        <p id="referralDetails"
+           style="margin-top:15px; display:none;">
+        </p>
+
+    </div>
+</div>
+<!-- LABORATORY / EXTENSION REFERRAL - END -->
+
+    <!-- Smart Decision -->
+    <div class="card">
+      <div class="card-header">
+        <span class="badge badge-amber">ENGINE</span>
+        <span class="card-title">Smart Decision Logic</span>
+      </div>
+      <div id="decisionPlaceholder" class="placeholder-state">
+        <div class="placeholder-icon">⚙️</div>
+        Decision logic appears after analysis
+      </div>
+      <div id="decisionResult" style="display:none;">
+        <div class="decision-row"><span class="decision-key">Disease detected</span><span class="decision-val" id="dec-disease" style="color:var(--red);">—</span></div>
+        <div class="decision-row"><span class="decision-key">Severity</span><span class="decision-val" id="dec-severity">—</span></div>
+        <div class="decision-row"><span class="decision-key">Temperature</span><span class="decision-val" id="dec-temp" style="color:var(--amber);">—</span></div>
+        <div class="decision-row"><span class="decision-key">Humidity</span><span class="decision-val" id="dec-humid" style="color:var(--blue);">—</span></div>
+        <div class="decision-row"><span class="decision-key">Soil condition</span><span class="decision-val" id="dec-soil" style="color:var(--green-primary);">—</span></div>
+        <div class="decision-row"><span class="decision-key">Symptoms matched</span><span class="decision-val" id="dec-symptoms" style="color:var(--green-primary);">—</span></div>
+        <div class="decision-row"><span class="decision-key">Recommended action</span><span class="decision-val" id="dec-action" style="color:var(--amber);">—</span></div>
+        <div style="margin-top:14px;padding:10px;background:#080d08;border-radius:6px;border:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-muted);">
+          <div id="dec-logic-text">—</div>
+        </div>
+        <button class="btn-outline" onclick="downloadReport()">⬇ Download Advisory Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <span class="badge badge-blue">GPS</span>
+    <span class="card-title">Geospatial Disease Map</span>
+  </div>
+
+  <div id="diseaseMap" style="height:400px;border-radius:8px;"></div>
+</div>
+
+<script>
+// ===============================
+// DISEASE MAP
+// ===============================
+
+const diseaseMap = L.map('diseaseMap').setView([11.3148,77.5523], 12);
+
+// Normal Map Layer
+const normalMap = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution: '&copy; OpenStreetMap contributors'
+  }
+).addTo(diseaseMap);
+
+// Satellite Map Layer
+const satelliteMap = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: 'Tiles &copy; Esri'
+  }
+);
+
+// Layer groups
+const diseaseMarkers = L.layerGroup().addTo(diseaseMap);
+const heatmapLayer = L.layerGroup().addTo(diseaseMap);
+const hotspotLayer = L.layerGroup().addTo(diseaseMap);
+
+
+// ===============================
+// LOAD PREDICTION HISTORY
+// ===============================
+
+fetch('http://127.0.0.1:5000/prediction-history')
+  .then(response => response.json())
+  .then(history => {
+
+    const mapPoints = [];
+    const riskPoints = [];
+
+    history.forEach(record => {
+
+      const lat = parseFloat(record.latitude);
+      const lon = parseFloat(record.longitude);
+
+      if (!isNaN(lat) && !isNaN(lon)) {
+
+  const confidence = parseFloat(record.confidence) || 0;
+
+  let risk;
+
+  if (confidence >= 90) {
+    risk = 1.0;        // Very High Risk
+  } 
+  else if (confidence >= 75) {
+    risk = 0.8;        // High Risk
+  } 
+  else if (confidence >= 50) {
+    risk = 0.5;        // Moderate Risk
+  } 
+  else {
+    risk = 0.2;        // Low Risk
+  }
+  let riskLevel;
+
+if (risk === 1.0) {
+    riskLevel = "VERY HIGH";
+} 
+else if (risk === 0.8) {
+    riskLevel = "HIGH";
+} 
+else if (risk === 0.5) {
+    riskLevel = "MODERATE";
+} 
+else {
+    riskLevel = "LOW";
+}
+
+showReferralSection(confidence, riskLevel);
+
+  mapPoints.push([lat, lon]);
+
+  riskPoints.push([lat, lon, risk]);
+
+        // Disease marker
+        // Slightly separate overlapping markers for display
+const offset = (Math.random() - 0.5) * 0.001;
+
+L.marker([
+  lat + offset,
+  lon + offset
+])
+.addTo(diseaseMarkers)
+
+        .bindPopup(`
+          <div style="min-width:180px">
+            <h3>🦠 ${record.disease}</h3>
+            <b>🤖 AI Confidence:</b> ${confidence}%<br>
+            <b>⚠️ Risk Level:</b> ${
+              risk === 1.0 ? "VERY HIGH" :
+              risk === 0.8 ? "HIGH" :
+              risk === 0.5 ? "MODERATE" :
+              "LOW"
+            }<br><br>
+            <b>📍 Latitude:</b> ${lat.toFixed(4)}<br>
+            <b>📍 Longitude:</b> ${lon.toFixed(4)}<br>
+            <b>🕒 Time:</b> ${record.timestamp || '—'}
+          </div>
+        `);
+        
+      }
+
+        
+      
+    });
+
+
+    // ===============================
+    // FIT MAP TO POINTS
+    // ===============================
+    console.log("TOTAL VALID MAP POINTS:", mapPoints.length);
+    console.log("MAP POINTS:", mapPoints);
+    if (mapPoints.length > 0) {
+      diseaseMap.fitBounds(mapPoints, {
+        padding: [30, 30]
+      });
+    }
+
+
+    // ===============================
+    // HEATMAP
+    // ===============================
+
+    if (mapPoints.length > 0) {
+
+      const heatPoints = riskPoints;
+
+      console.log("RISK HEATMAP POINTS:", heatPoints);
+
+      console.log("HEATMAP POINTS:", heatPoints);
+
+      const heatLayer = L.heatLayer(heatPoints, {
+        radius: 50,
+        blur: 35,
+        maxZoom: 17
+      });
+
+      heatLayer.addTo(heatmapLayer);
+    }
+
+
+    // ===============================
+    // DISEASE HOTSPOT
+    // ===============================
+
+    if (mapPoints.length >= 2) {
+
+      const centerLat =
+        mapPoints.reduce((sum, p) => sum + p[0], 0)
+        / mapPoints.length;
+
+      const centerLon =
+        mapPoints.reduce((sum, p) => sum + p[1], 0)
+        / mapPoints.length;
+
+      L.circle([centerLat, centerLon], {
+        radius: 1000
+      })
+      .addTo(hotspotLayer)
+      .bindPopup(
+        '<b>⚠ Disease Hotspot</b><br>' +
+        'Multiple disease cases detected in this area'
+      );
+    }
+
+  })
+  .catch(error => {
+    console.error(
+      'Could not load prediction history:',
+      error
+    );
+  });
+
+
+// ===============================
+// MAP LAYER CONTROL
+// ===============================
+
+const baseMaps = {
+  "🗺️ Normal Map": normalMap,
+  "🛰️ Satellite": satelliteMap
+};
+
+const overlayMaps = {
+  "📍 Disease Points": diseaseMarkers,
+  "🔥 Heatmap": heatmapLayer,
+  "⚠️ Disease Hotspot": hotspotLayer
+};
+
+L.control.layers(
+  baseMaps,
+  overlayMaps,
+  {
+    collapsed: false
+  }
+).addTo(diseaseMap);
+
+
+const API_KEY = 'c13f6483b0e2c6843d3f809c5b890974';
+let weatherData = { temp: null, humid: null, wind: null, location: 'Unknown', desc: 'Unknown' };
+
+// Clock
+function updateClock() {
+  const t = new Date().toTimeString().split(' ')[0];
+  document.getElementById('clock').textContent = t;
+  ['lt1','lt2','lt3'].forEach(id => {
+    if(document.getElementById(id).textContent === '--:--:--')
+      document.getElementById(id).textContent = t;
+  });
+}
+setInterval(updateClock, 1000); updateClock();
+
+// Weather fetch
+function fetchWeather(lat, lon) {
+  addLog('Fetching real-time weather data...', 'info');
+  fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.cod !== 200) throw new Error('API error');
+      weatherData.temp = Math.round(data.main.temp);
+      weatherData.humid = data.main.humidity;
+      weatherData.wind = Math.round(data.wind.speed * 3.6);
+      weatherData.location = data.name + ', ' + data.sys.country;
+      weatherData.desc = data.weather[0].description;
+
+      document.getElementById('locationName').textContent = weatherData.location;
+      document.getElementById('weatherDesc').textContent = weatherData.desc;
+      document.getElementById('latitudeVal').textContent = lat.toFixed(4);
+      document.getElementById('longitudeVal').textContent = lon.toFixed(4);
+      document.getElementById('tempVal').textContent = weatherData.temp;
+      document.getElementById('humidVal').textContent = weatherData.humid;
+      document.getElementById('windVal').textContent = weatherData.wind;
+      document.getElementById('tempBar').style.width = Math.min(weatherData.temp * 2, 100) + '%';
+      document.getElementById('humidBar').style.width = weatherData.humid + '%';
+      document.getElementById('windBar').style.width = Math.min(weatherData.wind * 2, 100) + '%';
+
+      document.getElementById('weatherLoading').style.display = 'none';
+      document.getElementById('weatherData').style.display = 'block';
+      document.getElementById('weatherBadge').textContent = 'Live';
+      document.getElementById('weatherBadge').className = 'badge badge-green';
+      addLog(`Weather: ${weatherData.temp}°C, ${weatherData.humid}% humidity @ ${weatherData.location}`, 'info');
+    })
+    .catch(() => {
+      document.getElementById('weatherLoading').style.display = 'none';
+      document.getElementById('weatherError').style.display = 'block';
+      document.getElementById('weatherBadge').textContent = 'Manual';
+      document.getElementById('weatherBadge').className = 'badge badge-amber';
+      addLog('Weather fetch failed — manual mode', 'warn');
+    });
+}
+
+// Store user's GPS location
+let userLatitude = null;
+let userLongitude = null;
+
+// Get location
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLatitude = pos.coords.latitude;
+      userLongitude = pos.coords.longitude;
+
+      fetchWeather(userLatitude, userLongitude);
+    },
+    () => {
+      // Fallback to Madurai coordinates
+      userLatitude = 9.9252;
+      userLongitude = 78.1198;
+
+      fetchWeather(userLatitude, userLongitude);
+      addLog('Location denied — using default location', 'warn');
+    }
+  );
+
+} else {
+  userLatitude = 9.9252;
+  userLongitude = 78.1198;
+
+  fetchWeather(userLatitude, userLongitude);
+}
+
+// Image upload
+let imageLoaded = false;
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  lastUploadedFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const p = document.getElementById('uploadPreview');
+    p.src = ev.target.result; p.style.display = 'block';
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    imageLoaded = true;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('btnText').textContent = 'Analyze Disease';
+    addLog('Image uploaded: ' + file.name, 'info');
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleSymptom(el) { el.classList.toggle('selected'); }
+function getSelectedSymptoms() {
+  return [...document.querySelectorAll('.symptom-item.selected')].map(el => el.textContent.trim());
+}
+function switchTab(btn, panel) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.treatment-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + panel).classList.add('active');
+}
+
+// Disease DB
+const diseaseDB = {
+  "Tomato___Early_blight": {
+    display:"Tomato Early Blight", category:"Fungal Disease",
+    cause:"Alternaria solani — thrives in warm humid conditions above 24°C",
+    chemical:{name:"Mancozeb 75WP",desc:"Contact fungicide with broad spectrum activity against early blight.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹120–180 / acre"},
+    alternative:{name:"Chlorothalonil 75WP",desc:"Preventive fungicide effective against a wide range of fungal diseases.",dosage:"2g / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹150–200 / acre"},
+    organic:{name:"Neem Oil 3%",desc:"Natural fungicide and insect repellent safe for beneficial insects.",dosage:"5ml / litre",freq:"Every 5 days",apply:"Foliar spray at dusk",cost:"₹80–120 / acre"}
+  },
+  "Tomato___Late_blight": {
+    display:"Tomato Late Blight", category:"Oomycete Disease",
+    cause:"Phytophthora infestans — spreads rapidly in cool wet weather below 20°C",
+    chemical:{name:"Metalaxyl + Mancozeb",desc:"Systemic + contact combination for late blight control.",dosage:"2.5g / litre",freq:"Every 5–7 days",apply:"Foliar spray",cost:"₹200–280 / acre"},
+    alternative:{name:"Cymoxanil + Mancozeb",desc:"Curative and protective fungicide combination.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹180–240 / acre"},
+    organic:{name:"Copper Sulphate (Bordeaux mix)",desc:"Traditional copper based spray effective against late blight.",dosage:"3g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹60–90 / acre"}
+  },
+  "Strawberry___Leaf_scorch": {
+    display:"Strawberry Leaf Scorch", category:"Fungal Disease",
+    cause:"Diplocarpon earlianum — dark purple spots with reddish borders on leaves",
+    chemical:{name:"Myclobutanil 10WP",desc:"Systemic triazole fungicide effective against leaf scorch.",dosage:"1.5ml / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹160–220 / acre"},
+    alternative:{name:"Captan 50WP",desc:"Broad spectrum protective fungicide for strawberry diseases.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹100–150 / acre"},
+    organic:{name:"Trichoderma viride",desc:"Biological fungicide using beneficial soil microorganism.",dosage:"5g / litre",freq:"Every 14 days",apply:"Soil drench + foliar",cost:"₹70–100 / acre"}
+  },
+  "Potato___Early_blight": {
+    display:"Potato Early Blight", category:"Fungal Disease",
+    cause:"Alternaria solani — concentric ring lesions on older leaves",
+    chemical:{name:"Azoxystrobin 23SC",desc:"Systemic strobilurin fungicide with protective and curative action.",dosage:"1ml / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹250–320 / acre"},
+    alternative:{name:"Mancozeb 75WP",desc:"Contact fungicide for early blight prevention.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹120–180 / acre"},
+    organic:{name:"Neem Oil + Garlic extract",desc:"Natural combination spray with antifungal properties.",dosage:"5ml + 2ml / litre",freq:"Every 5 days",apply:"Foliar spray at dusk",cost:"₹90–130 / acre"}
+  },
+  "Potato___Late_blight": {
+    display:"Potato Late Blight", category:"Oomycete Disease",
+    cause:"Phytophthora infestans — water soaked dark lesions spreading rapidly",
+    chemical:{name:"Chlorothalonil 75WP",desc:"Multi-site contact fungicide for late blight prevention.",dosage:"2ml / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹150–200 / acre"},
+    alternative:{name:"Metalaxyl + Mancozeb",desc:"Systemic combination fungicide for late blight.",dosage:"2.5g / litre",freq:"Every 5 days",apply:"Foliar spray",cost:"₹200–280 / acre"},
+    organic:{name:"Copper Hydroxide",desc:"Inorganic copper fungicide approved for organic farming.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹80–120 / acre"}
+  },
+  "Corn_(maize)___Common_rust_": {
+    display:"Corn Common Rust", category:"Fungal Disease",
+    cause:"Puccinia sorghi — brick red pustules on both leaf surfaces",
+    chemical:{name:"Propiconazole 25EC",desc:"Systemic triazole fungicide highly effective against rust diseases.",dosage:"1ml / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹180–240 / acre"},
+    alternative:{name:"Tebuconazole 25WG",desc:"Broad spectrum systemic fungicide for rust control.",dosage:"1g / litre",freq:"Every 14 days",apply:"Foliar spray",cost:"₹200–260 / acre"},
+    organic:{name:"Sulphur 80WP",desc:"Traditional fungicide with good rust control efficacy.",dosage:"3g / litre",freq:"Every 7 days",apply:"Foliar spray (avoid high temp)",cost:"₹60–90 / acre"}
+  },
+  "Apple___Apple_scab": {
+    display:"Apple Scab", category:"Fungal Disease",
+    cause:"Venturia inaequalis — olive green to black scabs on leaves and fruit",
+    chemical:{name:"Captan 50WP",desc:"Broad spectrum protective fungicide widely used for apple scab.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹100–150 / acre"},
+    alternative:{name:"Mancozeb + Carbendazim",desc:"Combination fungicide for protective and curative action.",dosage:"2g / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹130–180 / acre"},
+    organic:{name:"Lime Sulphur",desc:"Traditional dormant and growing season spray for scab.",dosage:"20ml / litre (diluted)",freq:"Every 10 days",apply:"Foliar spray",cost:"₹50–80 / acre"}
+  },
+  "Grape___Black_rot": {
+    display:"Grape Black Rot", category:"Fungal Disease",
+    cause:"Guignardia bidwellii — brown lesions with black pycnidia on leaves",
+    chemical:{name:"Mancozeb 75WP",desc:"Contact fungicide effective against grape black rot.",dosage:"2g / litre",freq:"Every 7 days",apply:"Foliar spray",cost:"₹120–180 / acre"},
+    alternative:{name:"Myclobutanil 10WP",desc:"Systemic fungicide with protective and curative properties.",dosage:"1ml / litre",freq:"Every 14 days",apply:"Foliar spray",cost:"₹160–220 / acre"},
+    organic:{name:"Bordeaux Mixture 1%",desc:"Classic copper fungicide for grape disease management.",dosage:"10g CuSO4 + 10g lime / litre",freq:"Every 10 days",apply:"Foliar spray",cost:"₹60–90 / acre"}
+  }
+};
+
+function getSeverity(confidence, humid, temp) {
+  let score = confidence;
+  if (humid > 80) score += 5;
+  if (temp > 30) score += 3;
+  if (score >= 88) return {level:'High',color:'#ef4444',blocks:5};
+  if (score >= 72) return {level:'Medium',color:'#f59e0b',blocks:3};
+  return {level:'Low',color:'#22c55e',blocks:1};
+}
+
+function addLog(msg, type) {
+  const box = document.getElementById('logBox');
+  const t = new Date().toTimeString().split(' ')[0];
+  const cls = type === 'warn' ? 'log-warn' : type === 'detect' ? 'log-detect' : 'log-info';
+  box.innerHTML += `<div class="log-line"><span class="log-time">${t}</span><span class="${cls}">${msg}</span></div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+let lastUploadedFile = null;
+
+function analyzeDisease() {
+  if (!imageLoaded || !lastUploadedFile) return;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  document.getElementById('btnSpinner').style.display = 'block';
+  document.getElementById('btnText').textContent = 'Analyzing...';
+  addLog('AI inference started', 'info');
+  addLog('Sending image to MobileNetV2 backend...', 'info');
+
+  const symptoms = getSelectedSymptoms();
+  const soil = document.getElementById('soilSelect') ? document.getElementById('soilSelect').value || 'Not specified' : 'Not specified';
+  const temp = weatherData.temp || parseInt(document.getElementById('manualTemp')?.value) || 30;
+  const humid = weatherData.humid || parseInt(document.getElementById('manualHumid')?.value) || 70;
+
+const formData = new FormData();
+formData.append('image', lastUploadedFile);
+
+// Send existing GPS location to Flask
+formData.append('latitude', userLatitude);
+formData.append('longitude', userLongitude);
+
+fetch('http://127.0.0.1:5000/predict', {
+  method: 'POST',
+  body: formData
+})
+  .then(r => r.json())
+  .then(result => {
+    addLog(`Symptoms: ${symptoms.length > 0 ? symptoms.join(', ') : 'None selected'}`, 'info');
+    addLog(`Environment: ${temp}°C, ${humid}% humidity`, 'info');
+
+    const confidence = Math.round(result.confidence);
+    const rawName = result.disease;
+    const data = diseaseDB[rawName] || {
+      display: rawName.replace(/___|_/g, ' '),
+      category: "Plant Disease",
+      cause: "See pesticide recommendation below",
+      chemical: { name: result.pesticide, desc: "AI recommended treatment based on detected disease.", dosage: result.dosage, freq: result.frequency, apply: "Foliar spray", cost: "Varies" },
+      alternative: { name: "Consult local agri store", desc: "Ask for alternatives to the recommended pesticide if unavailable.", dosage: "—", freq: "—", apply: "—", cost: "—" },
+      organic: { name: "Neem oil / natural extract", desc: "General organic option — consult expert for disease specific organic treatment.", dosage: "5ml/litre", freq: "Every 5-7 days", apply: "Foliar spray", cost: "₹80-120/acre" }
+    };
+    const severity = getSeverity(confidence, humid, temp);
+
+    addLog(`Detected: ${data.display} · ${confidence}% conf`, 'detect');
+    addLog(`Severity: ${severity.level}`, severity.level === 'High' ? 'warn' : 'info');
+    addLog(`Recommended: ${data.chemical.name}`, 'detect');
+
+    // Detection
+    document.getElementById('detectionPlaceholder').style.display = 'none';
+    document.getElementById('detectionResult').style.display = 'block';
+    document.getElementById('diseaseName').textContent = data.display;
+    document.getElementById('diseaseCategory').textContent = data.category;
+    document.getElementById('diseaseCause').textContent = data.cause;
+    document.getElementById('confidenceText').textContent = confidence + '%';
+    document.getElementById('confidenceFill').style.width = confidence + '%';
+    document.getElementById('confidenceFill').style.background = severity.color;
+
+    const blocks = document.querySelectorAll('.severity-block');
+    blocks.forEach((b, i) => {
+      b.className = 'severity-block';
+      if (i < severity.blocks) b.classList.add(severity.level.toLowerCase());
+    });
+    document.getElementById('severityText').textContent = severity.level + ' severity — ' +
+      (severity.level === 'High' ? 'Immediate treatment required' :
+       severity.level === 'Medium' ? 'Treat within 3–5 days' : 'Monitor and treat within a week');
+    const badge = document.getElementById('severityBadge');
+    badge.style.display = 'inline-block';
+    badge.textContent = severity.level;
+    badge.className = 'badge ' + (severity.level === 'High' ? 'badge-red' : severity.level === 'Medium' ? 'badge-amber' : 'badge-green');
+
+    // Treatment
+    document.getElementById('treatmentPlaceholder').style.display = 'none';
+    document.getElementById('treatmentResult').style.display = 'block';
+    ['chem','alt','org'].forEach((prefix, idx) => {
+      const src = idx === 0 ? data.chemical : idx === 1 ? data.alternative : data.organic;
+      document.getElementById(prefix+'-name').textContent = src.name;
+      document.getElementById(prefix+'-desc').textContent = src.desc;
+      document.getElementById(prefix+'-dosage').textContent = src.dosage;
+      document.getElementById(prefix+'-freq').textContent = src.freq;
+      document.getElementById(prefix+'-apply').textContent = src.apply;
+      document.getElementById(prefix+'-cost').textContent = src.cost;
+    });
+
+    // Decision
+    document.getElementById('decisionPlaceholder').style.display = 'none';
+    document.getElementById('decisionResult').style.display = 'block';
+    document.getElementById('dec-disease').textContent = data.display;
+    document.getElementById('dec-severity').textContent = severity.level;
+    document.getElementById('dec-severity').style.color = severity.color;
+    document.getElementById('dec-temp').textContent = temp + '°C ' + (temp > 30 ? '(High — disease risk elevated)' : '(Normal)');
+    document.getElementById('dec-humid').textContent = humid + '% ' + (humid > 75 ? '(High — fungal risk)' : '(Normal)');
+    document.getElementById('dec-soil').textContent = soil;
+    document.getElementById('dec-symptoms').textContent = symptoms.length > 0 ? symptoms.length + ' symptoms matched' : 'None selected';
+    const action = severity.level === 'High' ? 'IMMEDIATE TREATMENT ADVISED' : severity.level === 'Medium' ? 'SCHEDULE TREATMENT SOON' : 'MONITOR CLOSELY';
+    document.getElementById('dec-action').textContent = action;
+    document.getElementById('dec-logic-text').innerHTML =
+      `IF severity=${severity.level} AND humidity=${humid > 75 ? 'High' : 'Normal'}<br>AND soil=${soil}<br>→ ${action}<br>Consult expert if confidence below 70%`;
+
+    btn.disabled = false;
+    document.getElementById('btnSpinner').style.display = 'none';
+    document.getElementById('btnText').textContent = 'Analyze Again';
+  })
+  .catch(err => {
+    addLog('Backend connection failed — is Flask server running?', 'warn');
+    alert('Could not connect to AI backend. Make sure your Flask server (app.py) is running on http://127.0.0.1:5000');
+    btn.disabled = false;
+    document.getElementById('btnSpinner').style.display = 'none';
+    document.getElementById('btnText').textContent = 'Analyze Disease';
+  });
+}
+
+function downloadReport() {
+  const now = new Date().toLocaleString();
+  const report = `AGRISENSE ADVISORY REPORT
+================================
+Generated  : ${now}
+Location   : ${weatherData.location}
+System     : AgriSense v1.0 — MobileNetV2
+
+ENVIRONMENTAL DATA
+------------------
+Temperature : ${weatherData.temp || '—'}°C
+Humidity    : ${weatherData.humid || '—'}%
+Wind Speed  : ${weatherData.wind || '—'} km/h
+Soil        : ${document.getElementById('soilSelect')?.value || '—'}
+
+DETECTION RESULTS
+-----------------
+Disease     : ${document.getElementById('diseaseName').textContent}
+Category    : ${document.getElementById('diseaseCategory').textContent}
+Confidence  : ${document.getElementById('confidenceText').textContent}
+Severity    : ${document.getElementById('dec-severity').textContent}
+Cause       : ${document.getElementById('diseaseCause').textContent}
+
+RECOMMENDED TREATMENT (CHEMICAL)
+---------------------------------
+Pesticide   : ${document.getElementById('chem-name').textContent}
+Dosage      : ${document.getElementById('chem-dosage').textContent}
+Frequency   : ${document.getElementById('chem-freq').textContent}
+Application : ${document.getElementById('chem-apply').textContent}
+Est. Cost   : ${document.getElementById('chem-cost').textContent}
+
+ALTERNATIVE TREATMENT
+---------------------
+Pesticide   : ${document.getElementById('alt-name').textContent}
+Dosage      : ${document.getElementById('alt-dosage').textContent}
+
+ORGANIC TREATMENT
+-----------------
+Treatment   : ${document.getElementById('org-name').textContent}
+Dosage      : ${document.getElementById('org-dosage').textContent}
+
+RECOMMENDED ACTION
+------------------
+${document.getElementById('dec-action').textContent}
+
+DISCLAIMER
+----------
+This is an AI-generated advisory report only.
+Always consult a certified agricultural expert
+before applying any pesticide treatment.
+
+AgriSense — AI-Powered Precision Agriculture System
+`;
+  const blob = new Blob([report], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'agrisense_advisory_' + Date.now() + '.txt';
+  a.click();
+  addLog('Advisory report downloaded', 'info');
+}
+
+</script>
+</script>
+
+<!-- Multilingual Support -->
+<script>
+const translations = {
+    en: {
+        dashboard: "AgriSense Dashboard",
+        upload: "Upload Leaf Image",
+        analyze: "Analyze",
+        weather: "Weather",
+        soil: "Soil",
+        disease: "Disease Detection",
+        systemLog: "System Log"
+    },
+
+    ta: {
+        dashboard: "அக்ரிசென்ஸ் டாஷ்போர்டு",
+        upload: "இலை படத்தை பதிவேற்றவும்",
+        analyze: "பகுப்பாய்வு",
+        weather: "வானிலை",
+        soil: "மண்",
+        disease: "நோய் கண்டறிதல்",
+        systemLog: "கணினி பதிவு"
+    },
+
+    hi: {
+        dashboard: "एग्रीसेंस डैशबोर्ड",
+        upload: "पत्ती की छवि अपलोड करें",
+        analyze: "विश्लेषण करें",
+        weather: "मौसम",
+        soil: "मिट्टी",
+        disease: "रोग पहचान",
+        systemLog: "सिस्टम लॉग"
+    },
+
+    te: {
+        dashboard: "అగ్రిసెన్స్ డ్యాష్‌బోర్డ్",
+        upload: "ఆకు చిత్రాన్ని అప్‌లోడ్ చేయండి",
+        analyze: "విశ్లేషించండి",
+        weather: "వాతావరణం",
+        soil: "నేల",
+        disease: "వ్యాధి గుర్తింపు",
+        systemLog: "సిస్టమ్ లాగ్"
+    },
+
+    ml: {
+        dashboard: "അഗ്രിസെൻസ് ഡാഷ്ബോർഡ്",
+        upload: "ഇലയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക",
+        analyze: "വിശകലനം ചെയ്യുക",
+        weather: "കാലാവസ്ഥ",
+        soil: "മണ്ണ്",
+        disease: "രോഗം കണ്ടെത്തൽ",
+        systemLog: "സിസ്റ്റം ലോഗ്"
+    },
+
+    kn: {
+        dashboard: "ಅಗ್ರಿಸೆನ್ಸ್ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+        upload: "ಎಲೆಯ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+        analyze: "ವಿಶ್ಲೇಷಿಸಿ",
+        weather: "ಹವಾಮಾನ",
+        soil: "ಮಣ್ಣು",
+        disease: "ರೋಗ ಪತ್ತೆ",
+        systemLog: "ಸಿಸ್ಟಮ್ ಲಾಗ್"
+    },
+
+    mr: {
+        dashboard: "अॅग्रीसेन्स डॅशबोर्ड",
+        upload: "पानाची प्रतिमा अपलोड करा",
+        analyze: "विश्लेषण करा",
+        weather: "हवामान",
+        soil: "माती",
+        disease: "रोग ओळख",
+        systemLog: "सिस्टम लॉग"
+    }
+};
+
+function changeLanguage() {
+    const language = document.getElementById("languageSelector").value;
+    const t = translations[language];
+
+    console.log("Language changed to:", language);
+}
+</script>
+<script>
+const agriFullTranslations = {
+    en: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI-Powered Precision Agriculture Monitoring System",
+        "Live Farm View": "Live Farm View",
+        "Upload leaf image": "Upload leaf image",
+        "Symptom checklist": "Symptom checklist",
+        "Yellow spots": "Yellow spots",
+        "Brown patches": "Brown patches",
+        "Wilting leaves": "Wilting leaves",
+        "White powder": "White powder",
+        "Dark lesions": "Dark lesions",
+        "Leaf curl": "Leaf curl",
+        "Holes in leaf": "Holes in leaf",
+        "Water soaked": "Water soaked",
+        "Upload image to analyze": "Upload image to analyze",
+        "Environmental Data": "Environmental Data",
+        "Fetching...": "Fetching...",
+        "Detecting your location...": "Detecting your location...",
+        "Soil condition (farmer input)": "Soil condition (farmer input)",
+        "Select soil condition": "Select soil condition",
+        "Dry": "Dry",
+        "Moist": "Moist",
+        "Wet": "Wet",
+        "Waterlogged": "Waterlogged",
+        "System Log": "System Log",
+        "Disease Detection": "Disease Detection",
+        "Confidence score": "Confidence score",
+        "Severity assessment": "Severity assessment",
+        "Cause": "Cause",
+        "Pesticide Recommendation": "Pesticide Recommendation",
+        "Chemical": "Chemical",
+        "Alternative": "Alternative",
+        "Organic": "Organic",
+        "Dosage": "Dosage",
+        "Frequency": "Frequency",
+        "Application": "Application",
+        "Est. Cost": "Est. Cost",
+        "Smart Decision Logic": "Smart Decision Logic",
+        "Disease detected": "Disease detected",
+        "Temperature": "Temperature",
+        "Symptoms matched": "Symptoms matched",
+        "Recommended action": "Recommended action",
+        "Download Advisory Report": "Download Advisory Report",
+        "Geospatial Disease Map": "Geospatial Disease Map",
+        "Normal Map": "Normal Map",
+        "Satellite": "Satellite",
+        "Disease Points": "Disease Points",
+        "Heatmap": "Heatmap",
+        "Disease Hotspot": "Disease Hotspot"
+    },
+
+    ta: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI அடிப்படையிலான துல்லிய விவசாய கண்காணிப்பு அமைப்பு",
+        "Live Farm View": "நேரடி பண்ணை காட்சி",
+        "Upload leaf image": "இலை படத்தை பதிவேற்றவும்",
+        "Symptom checklist": "அறிகுறிகள் பட்டியல்",
+        "Yellow spots": "மஞ்சள் புள்ளிகள்",
+        "Brown patches": "பழுப்பு நிறத் திட்டுகள்",
+        "Wilting leaves": "வாடிய இலைகள்",
+        "White powder": "வெள்ளை தூள்",
+        "Dark lesions": "கருமையான புண்கள்",
+        "Leaf curl": "இலை சுருட்டல்",
+        "Holes in leaf": "இலையில் துளைகள்",
+        "Water soaked": "நீரால் நனைந்த தோற்றம்",
+        "Upload image to analyze": "பகுப்பாய்வு செய்ய படத்தை பதிவேற்றவும்",
+        "Environmental Data": "சுற்றுச்சூழல் தரவு",
+        "Fetching...": "பெறப்படுகிறது...",
+        "Detecting your location...": "உங்கள் இருப்பிடம் கண்டறியப்படுகிறது...",
+        "Soil condition (farmer input)": "மண் நிலை (விவசாயி உள்ளீடு)",
+        "Select soil condition": "மண் நிலையைத் தேர்ந்தெடுக்கவும்",
+        "Dry": "உலர்",
+        "Moist": "ஈரமான",
+        "Wet": "நனைந்த",
+        "Waterlogged": "நீர் தேங்கிய",
+        "System Log": "கணினி பதிவு",
+        "Disease Detection": "நோய் கண்டறிதல்",
+        "Confidence score": "நம்பகத்தன்மை மதிப்பெண்",
+        "Severity assessment": "நோயின் தீவிர மதிப்பீடு",
+        "Cause": "காரணம்",
+        "Pesticide Recommendation": "பூச்சிக்கொல்லி பரிந்துரை",
+        "Chemical": "இரசாயன",
+        "Alternative": "மாற்று",
+        "Organic": "இயற்கை",
+        "Dosage": "அளவு",
+        "Frequency": "அடிக்கடி பயன்படுத்தும் அளவு",
+        "Application": "பயன்படுத்தும் முறை",
+        "Est. Cost": "மதிப்பிடப்பட்ட செலவு",
+        "Smart Decision Logic": "தானியங்கி முடிவு அமைப்பு",
+        "Disease detected": "கண்டறியப்பட்ட நோய்",
+        "Temperature": "வெப்பநிலை",
+        "Symptoms matched": "பொருந்திய அறிகுறிகள்",
+        "Recommended action": "பரிந்துரைக்கப்பட்ட நடவடிக்கை",
+        "Download Advisory Report": "ஆலோசனை அறிக்கையை பதிவிறக்கவும்",
+        "Geospatial Disease Map": "புவியியல் நோய் வரைபடம்",
+        "Normal Map": "சாதாரண வரைபடம்",
+        "Satellite": "செயற்கைக்கோள்",
+        "Disease Points": "நோய் புள்ளிகள்",
+        "Heatmap": "வெப்ப வரைபடம்",
+        "Disease Hotspot": "நோய் அதிகம் உள்ள பகுதி"
+    },
+
+    hi: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI आधारित सटीक कृषि निगरानी प्रणाली",
+        "Live Farm View": "लाइव फार्म दृश्य",
+        "Upload leaf image": "पत्ती की छवि अपलोड करें",
+        "Symptom checklist": "लक्षण सूची",
+        "Yellow spots": "पीले धब्बे",
+        "Brown patches": "भूरे धब्बे",
+        "Wilting leaves": "मुरझाई पत्तियाँ",
+        "White powder": "सफेद पाउडर",
+        "Dark lesions": "गहरे घाव",
+        "Leaf curl": "पत्ती मुड़ना",
+        "Holes in leaf": "पत्ती में छेद",
+        "Water soaked": "पानी से भीगा हुआ",
+        "Upload image to analyze": "विश्लेषण के लिए छवि अपलोड करें",
+        "Environmental Data": "पर्यावरणीय डेटा",
+        "Fetching...": "प्राप्त किया जा रहा है...",
+        "Detecting your location...": "आपका स्थान पता लगाया जा रहा है...",
+        "Soil condition (farmer input)": "मिट्टी की स्थिति (किसान इनपुट)",
+        "Select soil condition": "मिट्टी की स्थिति चुनें",
+        "Dry": "सूखी",
+        "Moist": "नम",
+        "Wet": "गीली",
+        "Waterlogged": "जलभराव",
+        "System Log": "सिस्टम लॉग",
+        "Disease Detection": "रोग पहचान",
+        "Confidence score": "विश्वास स्कोर",
+        "Severity assessment": "गंभीरता का आकलन",
+        "Cause": "कारण",
+        "Pesticide Recommendation": "कीटनाशक की सिफारिश",
+        "Chemical": "रासायनिक",
+        "Alternative": "वैकल्पिक",
+        "Organic": "जैविक",
+        "Dosage": "खुराक",
+        "Frequency": "आवृत्ति",
+        "Application": "प्रयोग",
+        "Est. Cost": "अनुमानित लागत",
+        "Smart Decision Logic": "स्मार्ट निर्णय प्रणाली",
+        "Disease detected": "पता चला रोग",
+        "Temperature": "तापमान",
+        "Symptoms matched": "मिलान किए गए लक्षण",
+        "Recommended action": "अनुशंसित कार्रवाई",
+        "Download Advisory Report": "सलाह रिपोर्ट डाउनलोड करें",
+        "Geospatial Disease Map": "भौगोलिक रोग मानचित्र",
+        "Normal Map": "सामान्य मानचित्र",
+        "Satellite": "सैटेलाइट",
+        "Disease Points": "रोग बिंदु",
+        "Heatmap": "हीटमैप",
+        "Disease Hotspot": "रोग हॉटस्पॉट"
+    },
+
+    te: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI ఆధారిత ఖచ్చితమైన వ్యవసాయ పర్యవేక్షణ వ్యవస్థ",
+        "Live Farm View": "లైవ్ ఫార్మ్ వీక్షణ",
+        "Upload leaf image": "ఆకు చిత్రాన్ని అప్‌లోడ్ చేయండి",
+        "Symptom checklist": "లక్షణాల జాబితా",
+        "Yellow spots": "పసుపు మచ్చలు",
+        "Brown patches": "గోధుమ రంగు మచ్చలు",
+        "Wilting leaves": "వాడిపోయిన ఆకులు",
+        "White powder": "తెల్లటి పొడి",
+        "Dark lesions": "ముదురు గాయాలు",
+        "Leaf curl": "ఆకు ముడుచుకోవడం",
+        "Holes in leaf": "ఆకులో రంధ్రాలు",
+        "Water soaked": "నీటితో తడిసిన రూపం",
+        "Upload image to analyze": "విశ్లేషించడానికి చిత్రాన్ని అప్‌లోడ్ చేయండి",
+        "Environmental Data": "పర్యావరణ డేటా",
+        "Fetching...": "పొందుతోంది...",
+        "Detecting your location...": "మీ స్థానాన్ని గుర్తిస్తోంది...",
+        "Soil condition (farmer input)": "నేల పరిస్థితి (రైతు ఇన్‌పుట్)",
+        "Select soil condition": "నేల పరిస్థితిని ఎంచుకోండి",
+        "Dry": "పొడి",
+        "Moist": "తేమగా",
+        "Wet": "తడిగా",
+        "Waterlogged": "నీరు నిలిచిన",
+        "System Log": "సిస్టమ్ లాగ్",
+        "Disease Detection": "వ్యాధి గుర్తింపు",
+        "Confidence score": "నమ్మక స్కోర్",
+        "Severity assessment": "తీవ్రత అంచనా",
+        "Cause": "కారణం",
+        "Pesticide Recommendation": "పురుగుమందు సిఫార్సు",
+        "Chemical": "రసాయన",
+        "Alternative": "ప్రత్యామ్నాయం",
+        "Organic": "సేంద్రీయ",
+        "Dosage": "మోతాదు",
+        "Frequency": "తరచుదనం",
+        "Application": "వినియోగ విధానం",
+        "Est. Cost": "అంచనా వ్యయం",
+        "Smart Decision Logic": "స్మార్ట్ నిర్ణయ వ్యవస్థ",
+        "Disease detected": "గుర్తించిన వ్యాధి",
+        "Temperature": "ఉష్ణోగ్రత",
+        "Symptoms matched": "సరిపోలిన లక్షణాలు",
+        "Recommended action": "సిఫార్సు చేసిన చర్య",
+        "Download Advisory Report": "సలహా నివేదికను డౌన్‌లోడ్ చేయండి",
+        "Geospatial Disease Map": "భౌగోళిక వ్యాధి మ్యాప్",
+        "Normal Map": "సాధారణ మ్యాప్",
+        "Satellite": "ఉపగ్రహం",
+        "Disease Points": "వ్యాధి పాయింట్లు",
+        "Heatmap": "హీట్‌మ్యాప్",
+        "Disease Hotspot": "వ్యాధి హాట్‌స్పాట్"
+    },
+
+    ml: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI അധിഷ്ഠിത കൃത്യമായ കൃഷി നിരീക്ഷണ സംവിധാനം",
+        "Live Farm View": "തത്സമയ ഫാം കാഴ്ച",
+        "Upload leaf image": "ഇലയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക",
+        "Symptom checklist": "ലക്ഷണങ്ങളുടെ പട്ടിക",
+        "Yellow spots": "മഞ്ഞ പാടുകൾ",
+        "Brown patches": "തവിട്ട് പാടുകൾ",
+        "Wilting leaves": "വാടിയ ഇലകൾ",
+        "White powder": "വെളുത്ത പൊടി",
+        "Dark lesions": "ഇരുണ്ട പാടുകൾ",
+        "Leaf curl": "ഇല ചുരുളൽ",
+        "Holes in leaf": "ഇലയിൽ ദ്വാരങ്ങൾ",
+        "Water soaked": "വെള്ളം കയറിയ രൂപം",
+        "Upload image to analyze": "വിശകലനത്തിനായി ചിത്രം അപ്‌ലോഡ് ചെയ്യുക",
+        "Environmental Data": "പരിസ്ഥിതി ഡാറ്റ",
+        "Fetching...": "ലഭ്യമാക്കുന്നു...",
+        "Detecting your location...": "നിങ്ങളുടെ സ്ഥാനം കണ്ടെത്തുന്നു...",
+        "Soil condition (farmer input)": "മണ്ണിന്റെ അവസ്ഥ (കർഷക ഇൻപുട്ട്)",
+        "Select soil condition": "മണ്ണിന്റെ അവസ്ഥ തിരഞ്ഞെടുക്കുക",
+        "Dry": "വരണ്ട",
+        "Moist": "ഈർപ്പമുള്ള",
+        "Wet": "നനഞ്ഞ",
+        "Waterlogged": "വെള്ളക്കെട്ടുള്ള",
+        "System Log": "സിസ്റ്റം ലോഗ്",
+        "Disease Detection": "രോഗം കണ്ടെത്തൽ",
+        "Confidence score": "വിശ്വാസ സ്കോർ",
+        "Severity assessment": "തീവ്രത വിലയിരുത്തൽ",
+        "Cause": "കാരണം",
+        "Pesticide Recommendation": "കീടനാശിനി ശുപാർശ",
+        "Chemical": "രാസ",
+        "Alternative": "ബദൽ",
+        "Organic": "ജൈവ",
+        "Dosage": "അളവ്",
+        "Frequency": "ആവൃത്തി",
+        "Application": "പ്രയോഗം",
+        "Est. Cost": "കണക്കാക്കിയ ചെലവ്",
+        "Smart Decision Logic": "സ്മാർട്ട് തീരുമാന സംവിധാനം",
+        "Disease detected": "കണ്ടെത്തിയ രോഗം",
+        "Temperature": "താപനില",
+        "Symptoms matched": "പൊരുത്തപ്പെട്ട ലക്ഷണങ്ങൾ",
+        "Recommended action": "ശുപാർശ ചെയ്യുന്ന നടപടി",
+        "Download Advisory Report": "ഉപദേശ റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യുക",
+        "Geospatial Disease Map": "ഭൂമിശാസ്ത്ര രോഗ മാപ്പ്",
+        "Normal Map": "സാധാരണ മാപ്പ്",
+        "Satellite": "സാറ്റലൈറ്റ്",
+        "Disease Points": "രോഗ പോയിന്റുകൾ",
+        "Heatmap": "ഹീറ്റ്‌മാപ്പ്",
+        "Disease Hotspot": "രോഗ ഹോട്ട്‌സ്‌പോട്ട്"
+    },
+
+    kn: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI ಆಧಾರಿತ ನಿಖರ ಕೃಷಿ ಮೇಲ್ವಿಚಾರಣಾ ವ್ಯವಸ್ಥೆ",
+        "Live Farm View": "ಲೈವ್ ಫಾರ್ಮ್ ವೀಕ್ಷಣೆ",
+        "Upload leaf image": "ಎಲೆಯ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+        "Symptom checklist": "ಲಕ್ಷಣಗಳ ಪಟ್ಟಿ",
+        "Yellow spots": "ಹಳದಿ ಕಲೆಗಳು",
+        "Brown patches": "ಕಂದು ಕಲೆಗಳು",
+        "Wilting leaves": "ಬಾಡಿದ ಎಲೆಗಳು",
+        "White powder": "ಬಿಳಿ ಪುಡಿ",
+        "Dark lesions": "ಕಪ್ಪು ಗಾಯಗಳು",
+        "Leaf curl": "ಎಲೆ ಸುರುಳಿ",
+        "Holes in leaf": "ಎಲೆಯಲ್ಲಿ ರಂಧ್ರಗಳು",
+        "Upload image to analyze": "ವಿಶ್ಲೇಷಿಸಲು ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+        "Environmental Data": "ಪರಿಸರ ದತ್ತಾಂಶ",
+        "Fetching...": "ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
+        "Detecting your location...": "ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ಪತ್ತೆಹಚ್ಚಲಾಗುತ್ತಿದೆ...",
+        "Soil condition (farmer input)": "ಮಣ್ಣಿನ ಸ್ಥಿತಿ (ರೈತ ಇನ್‌ಪುಟ್)",
+        "Select soil condition": "ಮಣ್ಣಿನ ಸ್ಥಿತಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+        "Dry": "ಒಣ",
+        "Moist": "ತೇವಾಂಶವುಳ್ಳ",
+        "Wet": "ಒದ್ದೆ",
+        "Waterlogged": "ನೀರು ನಿಂತಿರುವ",
+        "System Log": "ಸಿಸ್ಟಮ್ ಲಾಗ್",
+        "Disease Detection": "ರೋಗ ಪತ್ತೆ",
+        "Confidence score": "ವಿಶ್ವಾಸ ಸ್ಕೋರ್",
+        "Severity assessment": "ತೀವ್ರತೆ ಮೌಲ್ಯಮಾಪನ",
+        "Cause": "ಕಾರಣ",
+        "Pesticide Recommendation": "ಕೀಟನಾಶಕ ಶಿಫಾರಸು",
+        "Chemical": "ರಾಸಾಯನಿಕ",
+        "Alternative": "ಪರ್ಯಾಯ",
+        "Organic": "ಸಾವಯವ",
+        "Dosage": "ಪ್ರಮಾಣ",
+        "Frequency": "ಆವರ್ತನೆ",
+        "Application": "ಅನ್ವಯಿಸುವ ವಿಧಾನ",
+        "Est. Cost": "ಅಂದಾಜು ವೆಚ್ಚ",
+        "Smart Decision Logic": "ಸ್ಮಾರ್ಟ್ ನಿರ್ಧಾರ ವ್ಯವಸ್ಥೆ",
+        "Disease detected": "ಪತ್ತೆಯಾದ ರೋಗ",
+        "Temperature": "ತಾಪಮಾನ",
+        "Symptoms matched": "ಹೊಂದಿಕೆಯಾದ ಲಕ್ಷಣಗಳು",
+        "Recommended action": "ಶಿಫಾರಸು ಮಾಡಿದ ಕ್ರಮ",
+        "Download Advisory Report": "ಸಲಹಾ ವರದಿಯನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+        "Geospatial Disease Map": "ಭೌಗೋಳಿಕ ರೋಗ ನಕ್ಷೆ",
+        "Normal Map": "ಸಾಮಾನ್ಯ ನಕ್ಷೆ",
+        "Satellite": "ಉಪಗ್ರಹ",
+        "Disease Points": "ರೋಗ ಬಿಂದುಗಳು",
+        "Heatmap": "ಹೀಟ್‌ಮ್ಯಾಪ್",
+        "Disease Hotspot": "ರೋಗ ಹಾಟ್‌ಸ್ಪಾಟ್"
+    },
+
+    mr: {
+        "AI-Powered Precision Agriculture Monitoring System": "AI आधारित अचूक कृषी निरीक्षण प्रणाली",
+        "Live Farm View": "थेट शेत दृश्य",
+        "Upload leaf image": "पानाची प्रतिमा अपलोड करा",
+        "Symptom checklist": "लक्षणांची यादी",
+        "Yellow spots": "पिवळे डाग",
+        "Brown patches": "तपकिरी डाग",
+        "Wilting leaves": "कोमेजलेली पाने",
+        "White powder": "पांढरी पावडर",
+        "Dark lesions": "गडद जखमा",
+        "Leaf curl": "पानांचे वळणे",
+        "Holes in leaf": "पानातील छिद्रे",
+        "Upload image to analyze": "विश्लेषणासाठी प्रतिमा अपलोड करा",
+        "Environmental Data": "पर्यावरणीय डेटा",
+        "Fetching...": "मिळवत आहे...",
+        "Detecting your location...": "तुमचे स्थान शोधत आहे...",
+        "Soil condition (farmer input)": "मातीची स्थिती (शेतकरी इनपुट)",
+        "Select soil condition": "मातीची स्थिती निवडा",
+        "Dry": "कोरडी",
+        "Moist": "ओलसर",
+        "Wet": "ओली",
+        "Waterlogged": "पाणी साचलेली",
+        "System Log": "सिस्टम लॉग",
+        "Disease Detection": "रोग ओळख",
+        "Confidence score": "विश्वास स्कोअर",
+        "Severity assessment": "तीव्रता मूल्यांकन",
+        "Cause": "कारण",
+        "Pesticide Recommendation": "कीटकनाशक शिफारस",
+        "Chemical": "रासायनिक",
+        "Alternative": "पर्यायी",
+        "Organic": "सेंद्रिय",
+        "Dosage": "मात्रा",
+        "Frequency": "वारंवारता",
+        "Application": "वापरण्याची पद्धत",
+        "Est. Cost": "अंदाजे खर्च",
+        "Smart Decision Logic": "स्मार्ट निर्णय प्रणाली",
+        "Disease detected": "आढळलेला रोग",
+        "Temperature": "तापमान",
+        "Symptoms matched": "जुळलेली लक्षणे",
+        "Recommended action": "शिफारस केलेली कृती",
+        "Download Advisory Report": "सल्ला अहवाल डाउनलोड करा",
+        "Geospatial Disease Map": "भौगोलिक रोग नकाशा",
+        "Normal Map": "सामान्य नकाशा",
+        "Satellite": "उपग्रह",
+        "Disease Points": "रोग बिंदू",
+        "Heatmap": "हीटमॅप",
+        "Disease Hotspot": "रोग हॉटस्पॉट"
+    }
+};
+
+function applyAgriSenseLanguage() {
+
+    const lang = document.getElementById("languageSelector").value;
+    const dictionary = agriFullTranslations[lang];
+
+    if (!dictionary) return;
+
+
+    /* ================================
+       1. NORMAL TEXT
+       ================================ */
+
+    document.querySelectorAll("body *").forEach(function(element) {
+
+        if (element.id === "languageSelector") return;
+
+        if (element.children.length === 0) {
+
+            if (!element.dataset.originalText) {
+                element.dataset.originalText =
+                    element.textContent.trim();
+            }
+
+            const original =
+                element.dataset.originalText;
+
+            if (dictionary[original]) {
+                element.textContent =
+                    dictionary[original];
+            }
+
+        }
+
+    });
+
+
+    /* ================================
+       2. SYMPTOM CHECKLIST
+       ================================ */
+
+    document.querySelectorAll(".symptom-item").forEach(function(item) {
+
+        const check = item.querySelector(".symptom-check");
+
+        if (!check) return;
+
+        if (!item.dataset.originalSymptom) {
+
+            item.dataset.originalSymptom =
+                Array.from(item.childNodes)
+                    .filter(node => node.nodeType === Node.TEXT_NODE)
+                    .map(node => node.textContent.trim())
+                    .join(" ");
+
+        }
+
+        const original =
+            item.dataset.originalSymptom;
+
+        if (dictionary[original]) {
+
+            Array.from(item.childNodes).forEach(function(node) {
+
+                if (node.nodeType === Node.TEXT_NODE) {
+
+                    const text = node.textContent.trim();
+
+                    if (text === original) {
+
+                        node.textContent =
+                            node.textContent.replace(
+                                text,
+                                dictionary[original]
+                            );
+
+                    }
+
+                }
+
+            });
+
+        }
+
+    });
+
+
+    /* ================================
+       3. SOIL CONDITION
+       ================================ */
+
+    const soilSelect =
+        document.getElementById("soilSelect");
+
+    if (soilSelect) {
+        const placeholder = soilSelect.querySelector('option[value=""]');
+
+if (placeholder) {
+    placeholder.textContent =
+        lang === "ta" ? "மண் நிலையைத் தேர்ந்தெடுக்கவும்" :
+        lang === "hi" ? "मिट्टी की स्थिति चुनें" :
+        lang === "te" ? "నేల పరిస్థితిని ఎంచుకోండి" :
+        lang === "ml" ? "മണ്ണിന്റെ അവസ്ഥ തിരഞ്ഞെടുക്കുക" :
+        lang === "kn" ? "ಮಣ್ಣಿನ ಸ್ಥಿತಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ" :
+        lang === "mr" ? "मातीची स्थिती निवडा" :
+        "Select soil condition";
+}
+        soilSelect.querySelectorAll("option").forEach(function(option) {
+
+            if (!option.dataset.originalText) {
+
+                option.dataset.originalText =
+                    option.textContent.trim();
+
+            }
+
+            const original =
+                option.dataset.originalText;
+
+
+            if (original.includes("Dry")) {
+
+                option.textContent =
+                    lang === "ta"
+                    ? "உலர் — குறைந்த ஈரப்பதம், பாசனம் தேவை"
+                    : lang === "hi"
+                    ? "सूखी — कम नमी, सिंचाई की आवश्यकता"
+                    : lang === "te"
+                    ? "పొడి — తక్కువ తేమ, నీటిపారుదల అవసరం"
+                    : lang === "ml"
+                    ? "വരണ്ട — കുറഞ്ഞ ഈർപ്പം, ജലസേചനം ആവശ്യമാണ്"
+                    : lang === "kn"
+                    ? "ಒಣ — ಕಡಿಮೆ ತೇವಾಂಶ, ನೀರಾವರಿ ಅಗತ್ಯ"
+                    : lang === "mr"
+                    ? "कोरडी — कमी ओलावा, सिंचन आवश्यक"
+                    : original;
+
+            }
+
+            else if (original.includes("Moist")) {
+
+                option.textContent =
+                    lang === "ta"
+                    ? "ஈரமான — உகந்த ஈரப்பத நிலை"
+                    : lang === "hi"
+                    ? "नम — इष्टतम नमी स्तर"
+                    : lang === "te"
+                    ? "తేమగా — సరైన తేమ స్థాయి"
+                    : lang === "ml"
+                    ? "ഈർപ്പമുള്ള — അനുയോജ്യമായ ഈർപ്പം"
+                    : lang === "kn"
+                    ? "ತೇವಾಂಶವುಳ್ಳ — ಸೂಕ್ತ ತೇವಾಂಶ ಮಟ್ಟ"
+                    : lang === "mr"
+                    ? "ओलसर — योग्य ओलावा पातळी"
+                    : original;
+
+            }
+
+            else if (original.includes("Wet")) {
+
+                option.textContent =
+                    lang === "ta"
+                    ? "ஈரமான — அதிக ஈரப்பதம், பூஞ்சை அபாயம்"
+                    : lang === "hi"
+                    ? "गीली — अधिक नमी, फंगल रोग का खतरा"
+                    : lang === "te"
+                    ? "తడిగా — అధిక తేమ, ఫంగస్ ప్రమాదం"
+                    : lang === "ml"
+                    ? "നനഞ്ഞ — ഉയർന്ന ഈർപ്പം, ഫംഗസ് അപകടം"
+                    : lang === "kn"
+                    ? "ಒದ್ದೆ — ಹೆಚ್ಚಿನ ತೇವಾಂಶ, ಶಿಲೀಂಧ್ರದ ಅಪಾಯ"
+                    : lang === "mr"
+                    ? "ओली — जास्त ओलावा, बुरशीचा धोका"
+                    : original;
+
+            }
+
+            else if (original.includes("Waterlogged")) {
+
+                option.textContent =
+                    lang === "ta"
+                    ? "நீர் தேங்கிய — அதிகப்படியான நீர் உள்ளது"
+                    : lang === "hi"
+                    ? "जलभराव — अत्यधिक पानी मौजूद"
+                    : lang === "te"
+                    ? "నీరు నిలిచిన — అధిక నీరు ఉంది"
+                    : lang === "ml"
+                    ? "വെള്ളക്കെട്ട് — അധിക വെള്ളം നിലനിൽക്കുന്നു"
+                    : lang === "kn"
+                    ? "ನೀರು ನಿಂತ — ಹೆಚ್ಚುವರಿ ನೀರು ಇದೆ"
+                    : lang === "mr"
+                    ? "पाणी साचलेली — अतिरिक्त पाणी आहे"
+                    : original;
+
+            }
+
+        });
+
+    }
+
+
+    /* ================================
+       4. PLACEHOLDERS
+       ================================ */
+
+    document.querySelectorAll("input, textarea").forEach(function(element) {
+
+        if (!element.dataset.originalPlaceholder) {
+
+            element.dataset.originalPlaceholder =
+                element.placeholder || "";
+
+        }
+
+        const original =
+            element.dataset.originalPlaceholder;
+
+        if (dictionary[original]) {
+
+            element.placeholder =
+                dictionary[original];
+
+        }
+
+    });
+
+
+    /* ================================
+       5. SAVE LANGUAGE
+       ================================ */
+
+    localStorage.setItem(
+        "agrisenseLanguage",
+        lang
+    );
+
+}
+
+document.getElementById("languageSelector").addEventListener(
+    "change",
+    applyAgriSenseLanguage
+);
+// ======================================================
+// LABORATORY / EXTENSION REFERRAL
+// ======================================================
+
+function showReferralSection(confidence, riskLevel) {
+
+    const referralSection = document.getElementById("referralSection");
+    const referralMessage = document.getElementById("referralMessage");
+
+    if (!referralSection) return;
+
+    // Show referral for low/moderate confidence
+    // or high/very-high risk
+    if (
+        confidence < 75 ||
+        riskLevel === "HIGH" ||
+        riskLevel === "VERY HIGH"
+    ) {
+
+        referralSection.style.display = "block";
+
+        if (confidence < 75) {
+            referralMessage.textContent =
+                "AI confidence is relatively low. Expert or laboratory confirmation is recommended.";
+        }
+        else if (
+            riskLevel === "HIGH" ||
+            riskLevel === "VERY HIGH"
+        ) {
+            referralMessage.textContent =
+                "High disease risk detected. Consultation with an Agriculture Extension Officer or laboratory is recommended.";
+        }
+
+    } else {
+
+        referralSection.style.display = "none";
+    }
+}
+
+
+function showExtensionReferral() {
+
+    const details = document.getElementById("referralDetails");
+
+    details.style.display = "block";
+
+    details.textContent =
+        "Please contact your nearest Agriculture Extension Officer or local Agriculture Department for further guidance.";
+}
+
+
+function showLabReferral() {
+
+    const details = document.getElementById("referralDetails");
+
+    details.style.display = "block";
+
+    details.textContent =
+        "For uncertain or severe cases, submit the affected plant/leaf sample to a nearby Plant Disease Diagnostic Laboratory for confirmation.";
+}
+
+
+function downloadDiseaseReport() {
+
+    const diseaseElement =
+        document.getElementById("diseaseName") ||
+        document.querySelector(".disease-name");
+
+    const disease =
+        diseaseElement
+            ? diseaseElement.textContent.trim()
+            : "Crop Disease";
+
+    const report =
+        "AgriSense Disease Referral Report\n\n" +
+        "Detected Condition: " + disease + "\n\n" +
+        "Recommendation:\n" +
+        "Further confirmation may be obtained from an Agriculture Extension Officer or Plant Disease Diagnostic Laboratory.\n\n" +
+        "Generated by AgriSense.";
+
+    const blob =
+        new Blob([report], { type: "text/plain" });
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const link =
+        document.createElement("a");
+
+    link.href = url;
+    link.download = "AgriSense_Disease_Referral_Report.txt";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
