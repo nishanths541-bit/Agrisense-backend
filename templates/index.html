@@ -490,7 +490,7 @@ const hotspotLayer = L.layerGroup().addTo(diseaseMap);
 // LOAD PREDICTION HISTORY
 // ===============================
 
-fetch('https://agrisense-backend-5xmr.onrender.com/prediction-history')
+fetch("https://agrisense-backend-5xmr.onrender.com/predict")
   .then(response => response.json())
   .then(history => {
 
